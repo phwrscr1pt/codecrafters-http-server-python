@@ -12,8 +12,15 @@ def main():
     while True:
         conn, addr = server_socket.accept()
         with conn:
-            conn.recv(1024)
-            conn.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+            request = conn.recv(1024).decode()
+
+            request_line = request.split("\r\n")[0]
+            path = request.split(" ")[1]
+
+            if path == "/":
+                conn.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
+            else:
+                conn.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
 
 if __name__ == "__main__":
     main()
