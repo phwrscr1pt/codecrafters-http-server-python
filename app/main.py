@@ -1,6 +1,7 @@
 import socket
 import threading
 import argparse
+import gzip
 from pathlib import Path
 
 
@@ -41,6 +42,7 @@ def handle_client(conn, directory):
             ]
             encoding_header = ""
             if "gzip" in encodings:
+                body = gzip.compress(body)
                 encoding_header = "Content-Encoding: gzip\r\n"
 
             response_headers = (
