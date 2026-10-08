@@ -35,8 +35,12 @@ def handle_client(conn, directory):
             conn.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
         elif path.startswith("/echo/"):
             body = path[len("/echo/"):].encode()
+            encodings = [
+                item.strip()
+                for item in headers.get("accept-encoding", "").split(",")
+            ]
             encoding_header = ""
-            if headers.get("accept-encoding", "") == "gzip":
+            if "gzip" in encodings:
                 encoding_header = "Content-Encoding: gzip\r\n"
 
             response_headers = (
