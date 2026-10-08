@@ -35,15 +35,19 @@ def handle_client(conn, directory):
             conn.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
         elif path.startswith("/echo/"):
             body = path[len("/echo/"):].encode()
+            encoding_header = ""
+            if headers.get("accept-encoding", "") == "gzip":
+                encoding_header = "Content-Encoding: gzip\r\n"
 
-            headers = (
+            response_headers = (
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
+                f"{encoding_header}"
                 f"Content-Length: {len(body)}\r\n"
                 "\r\n"
             ).encode()
 
-            conn.sendall(headers + body)
+            conn.sendall(response_headers + body)
         elif path == "/user-agent":
             body = headers.get("user-agent", "").encode()
 
