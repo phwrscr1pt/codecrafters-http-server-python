@@ -6,17 +6,30 @@ from pathlib import Path
 
 def handle_client(conn, directory):
     with conn:
-        request = conn.recv(1024).decode()
+        data = b""
+        # TCP can deliver headers and body across multiple reads.
+        while b"\r\n\r\n" not in data:
+            chunk = conn.recv(4096)
+            if not chunk:
+                return
+            data += chunk
 
-        header_section = request.split("\r\n\r\n", 1)[0]
-        lines = header_section.split("\r\n")
-
-        path = lines[0].split(" ")[1]
+        header_data, body = data.split(b"\r\n\r\n", 1)
+        lines = header_data.decode("iso-8859-1").split("\r\n")
+        method, path, version = lines[0].split(" ")
 
         headers = {}
         for line in lines[1:]:
             name, value = line.split(":", 1)
             headers[name.lower()] = value.strip()
+
+        content_length = int(headers.get("content-length", "0"))
+        while len(body) < content_length:
+            chunk = conn.recv(content_length - len(body))
+            if not chunk:
+                return
+            body += chunk
+        request_body = body[:content_length]
 
         if path == "/":
             conn.sendall(b"HTTP/1.1 200 OK\r\n\r\n")
@@ -53,6 +66,20 @@ def handle_client(conn, directory):
 
             if not file_path.is_relative_to(root):
                 conn.sendall(b"HTTP/1.1 404 Not Found\r\n\r\n")
+                return
+
+            if method == "POST":
+                try:
+                    file_path.write_bytes(request_body)
+                except OSError:
+                    conn.sendall(
+                        b"HTTP/1.1 500 Internal Server Error\r\n"
+                        b"Content-Length: 0\r\n\r\n"
+                    )
+                    return
+                conn.sendall(
+                    b"HTTP/1.1 201 Created\r\nContent-Length: 0\r\n\r\n"
+                )
                 return
 
             try:
